@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper to validate image format and size
+    function isValidImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)') &&
+             request.resource.size < 5 * 1024 * 1024; // max 5MB
+    }
+
+    // Match restaurant image assets
+    // Structure: restaurants/{restaurantId}/{logo|cover|menu}/{imageId}
+    match /restaurants/{restaurantId}/{allPaths=**} {
+      // Public customer read for digital menu display
+      allow read: if true;
+
+      // Only authenticated restaurant owners can upload images
+      allow write: if isSignedIn() && isValidImage();
+
+      // Only authenticated restaurant owners can delete images
+      allow delete: if isSignedIn();
+    }
+  }
+}

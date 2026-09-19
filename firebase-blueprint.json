@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "restaurants": {
+      "title": "Restaurant",
+      "description": "Multi-tenant restaurant profiles for digital menus",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 150 },
+        "tagline": { "type": "string", "maxLength": 200 },
+        "logoUrl": { "type": "string" },
+        "coverImageUrl": { "type": "string" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "address": { "type": "string", "maxLength": 300 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "whatsapp": { "type": "string", "maxLength": 30 },
+        "instagram": { "type": "string" },
+        "googleMapsUrl": { "type": "string" },
+        "openingHours": { "type": "string", "maxLength": 150 },
+        "currencySymbol": { "type": "string", "maxLength": 5 },
+        "ownerId": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "address", "phone", "isActive"]
+    },
+    "categories": {
+      "title": "Category",
+      "description": "Menu categories belonging to a specific restaurant",
+      "type": "object",
+      "properties": {
+        "restaurantId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "displayOrder": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["restaurantId", "name", "displayOrder"]
+    },
+    "menuItems": {
+      "title": "MenuItem",
+      "description": "Individual food and drink dishes for a restaurant",
+      "type": "object",
+      "properties": {
+        "restaurantId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "price": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "foodType": { "type": "string", "enum": ["veg", "nonveg", "non-veg", "egg"] },
+        "isAvailable": { "type": "boolean" },
+        "isChefSpecial": { "type": "boolean" },
+        "isRecommended": { "type": "boolean" },
+        "isSpicy": { "type": "boolean" },
+        "spicyLevel": { "type": "number" },
+        "ingredients": { "type": "array" },
+        "displayOrder": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["restaurantId", "categoryId", "name", "price", "isAvailable"]
+    },
+    "users": {
+      "title": "User",
+      "description": "User profile with multi-tenant restaurant ownership",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["restaurant_admin"] },
+        "restaurantId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["email", "role", "restaurantId"]
+    }
+  },
+  "firestore": {
+    "/restaurants/{restaurantId}": {
+      "schema": "restaurants",
+      "description": "Public restaurant profile details and configuration"
+    },
+    "/categories/{categoryId}": {
+      "schema": "categories",
+      "description": "Menu categories associated with a restaurant"
+    },
+    "/menuItems/{itemId}": {
+      "schema": "menuItems",
+      "description": "Food dishes and drinks belonging to a restaurant"
+    },
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "Owner profile linking authenticated user to their restaurant"
+    }
+  }
+}

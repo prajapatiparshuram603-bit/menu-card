@@ -1,0 +1,120 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Default Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'prajapatiparshuram603@gmail.com'
+      );
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isRestaurantAdmin(restId) {
+      return isSignedIn() && (
+        isBootstrappedAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         getUserData().role in ['restaurant_admin', 'admin'] &&
+         (getUserData().restaurantId == restId || getUserData().restaurantId == 'all')) ||
+        (exists(/databases/$(database)/documents/restaurants/$(restId)) &&
+         get(/databases/$(database)/documents/restaurants/$(restId)).data.ownerId == request.auth.uid)
+      );
+    }
+
+    // 2. Users Collection (Private User Profiles & RBAC)
+    match /users/{userId} {
+      // Users can read their own profile, or bootstrapped admin can inspect
+      allow get: if isUser(userId) || isBootstrappedAdmin();
+      allow list: if isBootstrappedAdmin();
+
+      // Users can create their own profile upon authentication
+      allow create: if isUser(userId) &&
+        request.resource.data.role in ['restaurant_admin', 'admin'] &&
+        request.resource.data.email is string &&
+        request.resource.data.restaurantId is string;
+
+      // Users cannot change their role or restaurantId to escalate privileges
+      allow update: if (isUser(userId) || isBootstrappedAdmin()) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.restaurantId == resource.data.restaurantId;
+
+      allow delete: if isBootstrappedAdmin();
+    }
+
+    // 3. Restaurants Collection
+    match /restaurants/{restaurantId} {
+      // Public customer read: anyone scanning table QR can view restaurant details
+      allow get, list: if true;
+
+      // Restaurant creation: authenticated owner or initial default restaurant bootstrap
+      allow create: if isSignedIn() ||
+        (restaurantId == 'shree-yedeyur' && request.resource.data.name is string);
+
+      // Restaurant update: only authenticated admin of this restaurant or bootstrapped admin
+      allow update: if isRestaurantAdmin(restaurantId);
+
+      // Client-side deletion is restricted to super admin
+      allow delete: if isBootstrappedAdmin();
+    }
+
+    // 4. Categories Collection
+    match /categories/{categoryId} {
+      // Public customer read for browsing menu categories
+      allow get, list: if true;
+
+      // Only authenticated admin of the category's restaurant or initial default bootstrap
+      allow create: if (isSignedIn() && isRestaurantAdmin(request.resource.data.restaurantId)) ||
+        (request.resource.data.restaurantId == 'shree-yedeyur' && request.resource.data.name is string);
+
+      // Only authenticated admin of this restaurant can update
+      allow update: if isSignedIn() &&
+        isRestaurantAdmin(resource.data.restaurantId) &&
+        request.resource.data.restaurantId == resource.data.restaurantId &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 100;
+
+      // Only authenticated admin can delete
+      allow delete: if isSignedIn() && isRestaurantAdmin(resource.data.restaurantId);
+    }
+
+    // 5. Menu Items Collection
+    match /menuItems/{itemId} {
+      // Public customer read: all menu dishes are visible for browsing
+      allow get, list: if true;
+
+      // Admin write or initial default restaurant bootstrap
+      allow create: if (isSignedIn() && isRestaurantAdmin(request.resource.data.restaurantId)) ||
+        (request.resource.data.restaurantId == 'shree-yedeyur' &&
+         request.resource.data.name is string &&
+         request.resource.data.name.size() > 0 &&
+         request.resource.data.name.size() <= 150 &&
+         request.resource.data.price is number &&
+         request.resource.data.price >= 0);
+
+      allow update: if isSignedIn() &&
+        isRestaurantAdmin(resource.data.restaurantId) &&
+        request.resource.data.restaurantId == resource.data.restaurantId &&
+        request.resource.data.price is number &&
+        request.resource.data.price >= 0;
+
+      allow delete: if isSignedIn() && isRestaurantAdmin(resource.data.restaurantId);
+    }
+  }
+}

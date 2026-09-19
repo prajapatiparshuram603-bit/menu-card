@@ -1,0 +1,6 @@
+{
+  "name": "Digital Restaurant Menu",
+  "description": "Mobile-first digital view-only restaurant menu website powered by Firebase Firestore with instant QR code access.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
